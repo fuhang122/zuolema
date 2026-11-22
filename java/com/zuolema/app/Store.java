@@ -62,6 +62,9 @@ public class Store {
         public String date;
         /** sex / mast / 空（只记了心情等其他内容） */
         public String type = "";
+        /** 做爱方式：none/condom/outside/custom；自慰方式：hand/toy。 */
+        public String method = "";
+        public String methodCustom = "";
         public int durationMinutes = 15;
         public String mood = "";
         public String bodyState = "";
@@ -78,7 +81,7 @@ public class Store {
         }
 
         public boolean isEmpty() {
-            return type.isEmpty() && durationMinutes == 15
+            return type.isEmpty() && method.isEmpty() && durationMinutes == 15
                     && mood.isEmpty() && bodyState.isEmpty() && pleasure == 0
                     && note.trim().isEmpty() && extras.isEmpty() && media.isEmpty();
         }
@@ -88,6 +91,8 @@ public class Store {
             e.id = null;
             e.date = date;
             e.type = type;
+            e.method = method;
+            e.methodCustom = methodCustom;
             e.durationMinutes = durationMinutes;
             e.mood = mood;
             e.bodyState = bodyState;
@@ -106,6 +111,8 @@ public class Store {
                 o.put("id", id);
                 o.put("date", date);
                 o.put("type", type);
+                o.put("method", method);
+                o.put("methodCustom", methodCustom);
                 // 兼容旧版本字段，方便回退安装。
                 o.put("hadSex", "sex".equals(type));
                 o.put("hadMasturbation", "mast".equals(type));
@@ -137,6 +144,8 @@ public class Store {
                 boolean mast = o.optBoolean("hadMasturbation", false);
                 e.type = sex ? "sex" : (mast ? "mast" : "");
             }
+            e.method = o.optString("method", "");
+            e.methodCustom = o.optString("methodCustom", "");
             e.durationMinutes = o.optInt("durationMinutes", 15);
             e.mood = o.optString("mood", "");
             e.bodyState = o.optString("bodyState", "");

@@ -43,6 +43,9 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
+import android.view.animation.AnimationSet;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.TranslateAnimation;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.CompoundButton;
@@ -86,6 +89,12 @@ public class MainActivity extends Activity {
     private static final String[] STATES = {"精力充沛", "放松", "有点疲惫", "敏感", "心不在焉", "很满足"};
     private static final String[] EXTRA_IDS = {"toys", "porn", "lube", "lingerie", "other"};
     private static final String[] EXTRA_LABELS = {"道具", "成人视频", "润滑液", "情趣内衣", "其他"};
+    private static final String[] SEX_METHOD_IDS = {"none", "condom", "outside", "custom"};
+    private static final String[] SEX_METHOD_LABELS = {"无套", "有套", "体外", "自定义"};
+    private static final String[] SEX_METHOD_HINTS = {"不戴套", "全程佩戴", "体外结束", "写自己的方式"};
+    private static final String[] MAST_METHOD_IDS = {"hand", "toy"};
+    private static final String[] MAST_METHOD_LABELS = {"手", "道具"};
+    private static final String[] MAST_METHOD_HINTS = {"用手", "使用道具"};
     private static final String[] PLEASURE_LABEL = {"", "几乎没有", "轻微", "愉悦", "强烈", "极致"};
     private static final int[] DURATION_PRESETS = {5, 15, 30, 45, 60};
 
@@ -102,6 +111,8 @@ public class MainActivity extends Activity {
     private String date = Store.today();
     private String editingId = null;
     private String activityType = "";
+    private String method = "";
+    private String methodCustom = "";
     private int durationMinutes = 15;
     private String mood = "";
     private String bodyState = "";
@@ -124,6 +135,8 @@ public class MainActivity extends Activity {
     private final List<TextView> durationChips = new ArrayList<>();
     private LinearLayout sexTile, mastTile;
     private TextView sexGlyph, sexTitle, sexSub, mastGlyph, mastTitle, mastSub;
+    private LinearLayout methodRow;
+    private TextView methodText;
     private final List<LinearLayout> moodItems = new ArrayList<>();
     private final List<TextView> moodLabels = new ArrayList<>();
     private final List<TextView> stateChips = new ArrayList<>();
@@ -756,9 +769,20 @@ public class MainActivity extends Activity {
         else page = diaryCalendar ? buildCalendar() : buildDiaryEditor();
         content.addView(page, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        AlphaAnimation fade = new AlphaAnimation(0.45f, 1f);
-        fade.setDuration(180);
-        page.startAnimation(fade);
+        animateIn(page);
+    }
+
+    private void animateIn(View view) {
+        if (view == null) return;
+        AnimationSet set = new AnimationSet(true);
+        set.setInterpolator(new DecelerateInterpolator());
+        AlphaAnimation fade = new AlphaAnimation(0.2f, 1f);
+        fade.setDuration(220);
+        TranslateAnimation rise = new TranslateAnimation(0, 0, dp(12), 0);
+        rise.setDuration(240);
+        set.addAnimation(fade);
+        set.addAnimation(rise);
+        view.startAnimation(set);
     }
 
     /* ==================== 日记页 ==================== */
@@ -768,6 +792,8 @@ public class MainActivity extends Activity {
         exists = e != null;
         if (e == null) {
             activityType = "";
+            method = "";
+            methodCustom = "";
             durationMinutes = 15;
             mood = "";
             bodyState = "";
@@ -777,6 +803,8 @@ public class MainActivity extends Activity {
             media.clear();
         } else {
             activityType = e.type == null ? "" : e.type;
+            method = e.method == null ? "" : e.method;
+            methodCustom = e.methodCustom == null ? "" : e.methodCustom;
             durationMinutes = e.durationMinutes;
             mood = e.mood == null ? "" : e.mood;
             bodyState = e.bodyState == null ? "" : e.bodyState;
@@ -1451,21 +1479,271 @@ public class MainActivity extends Activity {
         sexTile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                activityType = "sex".equals(activityType) ? "" : "sex";
+                boolean deselect = "sex".equals(activityType);
+                activityType = deselect ? "" : "sex";
+                method = "";
+                methodCustom = "";
                 markDirty();
                 refreshActivityTiles();
+                refreshMethodRow();
+                if (!deselect) showMethodSheet();
             }
         });
         mastTile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                activityType = "mast".equals(activityType) ? "" : "mast";
+                boolean deselect = "mast".equals(activityType);
+                activityType = deselect ? "" : "mast";
+                method = "";
+                methodCustom = "";
                 markDirty();
                 refreshActivityTiles();
+                refreshMethodRow();
+                if (!deselect) showMethodSheet();
             }
         });
+        card.addView(Ui.space(this, 10));
+        card.addView(buildMethodRow());
         refreshActivityTiles();
         return card;
+    }
+
+    private View buildMethodRow() {
+        methodRow = Ui.row(this);
+        methodRow.setGravity(Gravity.CENTER_VERTICAL);
+        methodText = Ui.tv(this, "方式 · 未选择", 12, Ui.MUTED, false);
+        methodRow.addView(methodText, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView change = Ui.tv(this, "选择", 12, Ui.ROSE, true);
+        change.setPadding(dp(8), dp(6), dp(8), dp(6));
+        change.setBackground(Ui.ripple(Ui.SOFT2, 14, Ui.alpha(Ui.ROSE, 0x22), this));
+        change.setClickable(true);
+        change.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showMethodSheet();
+            }
+        });
+        methodRow.addView(change);
+        refreshMethodRow();
+        return methodRow;
+    }
+
+    private void refreshMethodRow() {
+        if (methodRow == null || methodText == null) return;
+        String label = methodLabel(method, methodCustom);
+        if (label.isEmpty()) {
+            methodText.setText(activityType.isEmpty() ? "方式 · 先选这一项" : "方式 · 未选择");
+            methodText.setTextColor(Ui.MUTED);
+        } else {
+            methodText.setText("方式 · " + label);
+            methodText.setTextColor(Ui.DEEP);
+        }
+        if (methodRow.getChildCount() > 1) {
+            TextView change = (TextView) methodRow.getChildAt(1);
+            change.setText(label.isEmpty() ? "选择" : "更改");
+        }
+    }
+
+    private String methodLabel(String id, String custom) {
+        if (id == null || id.isEmpty()) return "";
+        for (int i = 0; i < SEX_METHOD_IDS.length; i++) {
+            if (SEX_METHOD_IDS[i].equals(id)) {
+                if ("custom".equals(id)) {
+                    return custom == null || custom.trim().isEmpty() ? "自定义" : custom.trim();
+                }
+                return SEX_METHOD_LABELS[i];
+            }
+        }
+        for (int i = 0; i < MAST_METHOD_IDS.length; i++) {
+            if (MAST_METHOD_IDS[i].equals(id)) return MAST_METHOD_LABELS[i];
+        }
+        return "";
+    }
+
+    private void applyMethod(String id) {
+        method = id;
+        methodCustom = "";
+        markDirty();
+        refreshMethodRow();
+        animateIn(methodRow);
+    }
+
+    private void showMethodSheet() {
+        if (activityType.isEmpty()) return;
+        final boolean sex = "sex".equals(activityType);
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        LinearLayout sheet = Ui.col(this);
+        sheet.setBackground(Ui.bg(Ui.CARD, 28, this));
+        sheet.setPadding(dp(20), dp(18), dp(20), dp(22));
+
+        LinearLayout head = Ui.row(this);
+        LinearLayout titleBox = Ui.col(this);
+        titleBox.addView(Ui.label(this, sex ? "SEX MODE" : "MAST MODE"));
+        titleBox.addView(Ui.space(this, 5));
+        titleBox.addView(Ui.serif(this, sex ? "做爱方式" : "自慰方式", 23, Ui.INK, true));
+        titleBox.addView(Ui.space(this, 4));
+        titleBox.addView(Ui.tv(this, "选一个最接近这一次的，之后还能改", 11, Ui.MUTED, false));
+        head.addView(titleBox, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = Ui.tv(this, "×", 20, Ui.MUTED, false);
+        close.setGravity(Gravity.CENTER);
+        close.setBackground(Ui.bg(Ui.SOFT2, 24, this));
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { dialog.dismiss(); }
+        });
+        head.addView(close, new LinearLayout.LayoutParams(dp(34), dp(34)));
+        sheet.addView(head);
+        sheet.addView(Ui.space(this, 16));
+
+        if (sex) {
+            for (int i = 0; i < SEX_METHOD_IDS.length; i++) {
+                sheet.addView(methodOption(dialog, SEX_METHOD_IDS[i],
+                        SEX_METHOD_LABELS[i], SEX_METHOD_HINTS[i]));
+                sheet.addView(Ui.space(this, 8));
+            }
+        } else {
+            for (int i = 0; i < MAST_METHOD_IDS.length; i++) {
+                sheet.addView(methodOption(dialog, MAST_METHOD_IDS[i],
+                        MAST_METHOD_LABELS[i], MAST_METHOD_HINTS[i]));
+                sheet.addView(Ui.space(this, 8));
+            }
+        }
+
+        dialog.setContentView(sheet);
+        dialog.setCancelable(true);
+        dialog.setCanceledOnTouchOutside(true);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0.35f);
+            window.setGravity(Gravity.BOTTOM);
+            window.setWindowAnimations(R.style.BottomSheetAnimation);
+        }
+        dialog.show();
+        if (window != null) {
+            int width = getResources().getDisplayMetrics().widthPixels - dp(24);
+            window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.BOTTOM);
+            WindowManager.LayoutParams lp = window.getAttributes();
+            lp.y = dp(12);
+            window.setAttributes(lp);
+        }
+    }
+
+    private View methodOption(final Dialog dialog, final String id,
+                              String title, String hint) {
+        boolean on = id.equals(method);
+        LinearLayout row = Ui.row(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setBackground(Ui.ripple(on ? Ui.alpha(Ui.ROSE, 0x14) : Ui.SOFT2,
+                16, Ui.alpha(Ui.ROSE, 0x2A), this));
+        row.setClickable(true);
+
+        LinearLayout text = Ui.col(this);
+        text.addView(Ui.tv(this, title, 15, on ? Ui.DEEP : Ui.INK, true));
+        text.addView(Ui.space(this, 2));
+        text.addView(Ui.tv(this, hint, 10, Ui.MUTED, false));
+        row.addView(text, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView mark = Ui.tv(this, on ? "✓" : "›", 18,
+                on ? Ui.ROSE : Ui.MUTED, true);
+        mark.setGravity(Gravity.CENTER);
+        row.addView(mark, new LinearLayout.LayoutParams(dp(30), dp(30)));
+
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+                if ("custom".equals(id)) {
+                    showCustomMethodDialog();
+                } else {
+                    applyMethod(id);
+                }
+            }
+        });
+        return row;
+    }
+
+    private void showCustomMethodDialog() {
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout card = Ui.col(this);
+        card.setBackground(Ui.bg(Ui.CARD, 26, this));
+        card.setPadding(dp(22), dp(20), dp(22), dp(18));
+
+        card.addView(Ui.label(this, "CUSTOM"));
+        card.addView(Ui.space(this, 6));
+        card.addView(Ui.serif(this, "自定义方式", 22, Ui.INK, true));
+        card.addView(Ui.space(this, 6));
+        card.addView(Ui.tv(this, "写一个你习惯的说法，只存在这台手机里", 11, Ui.MUTED, false));
+        card.addView(Ui.space(this, 12));
+
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setText(methodCustom == null ? "" : methodCustom);
+        input.setHint("例如：先戴套，后来摘了");
+        input.setTextColor(Ui.INK);
+        input.setHintTextColor(Ui.MUTED);
+        input.setTextSize(14);
+        input.setPadding(dp(12), dp(10), dp(12), dp(10));
+        input.setBackground(Ui.strokeBg(Ui.SOFT2, 14, Ui.LINE, 1, this));
+        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(24)});
+        card.addView(input);
+
+        LinearLayout actions = Ui.row(this);
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
+        alp.topMargin = dp(16);
+        card.addView(actions, alp);
+        TextView cancel = Ui.tv(this, "取消", 14, Ui.INK, true);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setBackground(Ui.ripple(Ui.SOFT2, 22, Ui.alpha(Ui.INK, 0x22), this));
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, dp(46), 1f);
+        clp.rightMargin = dp(8);
+        actions.addView(cancel, clp);
+        TextView ok = Ui.tv(this, "用这个", 14, Color.WHITE, true);
+        ok.setGravity(Gravity.CENTER);
+        ok.setBackground(Ui.ripple(Ui.ROSE, 22, 0x33FFFFFF, this));
+        actions.addView(ok, new LinearLayout.LayoutParams(0, dp(46), 1f));
+
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { dialog.dismiss(); }
+        });
+        ok.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                method = "custom";
+                methodCustom = input.getText().toString().trim();
+                markDirty();
+                refreshMethodRow();
+                animateIn(methodRow);
+                dialog.dismiss();
+            }
+        });
+
+        dialog.setContentView(card);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0.5f);
+        }
+        dialog.show();
+        if (window != null) {
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.88f);
+            window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        }
+        input.requestFocus();
+        input.setSelection(input.getText().length());
     }
 
     private LinearLayout activityTile(String glyph, String title, String sub, boolean first) {
@@ -1508,6 +1786,8 @@ public class MainActivity extends Activity {
         glyph.setTextColor(on ? 0xFFFFFFFF : Ui.ROSE);
         title.setTextColor(on ? 0xFFFFFFFF : Ui.INK);
         sub.setTextColor(on ? 0xFFF4D9DE : Ui.MUTED);
+        tile.animate().scaleX(on ? 1.02f : 1f).scaleY(on ? 1.02f : 1f)
+                .setDuration(160).start();
     }
 
     private LinearLayout sectionHeader(String index, String title, String hint) {
@@ -2067,7 +2347,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean isEmptyDraft() {
-        return activityType.isEmpty() && durationMinutes == 15
+        return activityType.isEmpty() && method.isEmpty() && durationMinutes == 15
                 && mood.isEmpty() && bodyState.isEmpty() && pleasure == 0
                 && note.trim().isEmpty() && extras.isEmpty() && media.isEmpty();
     }
@@ -2089,6 +2369,8 @@ public class MainActivity extends Activity {
             e.id = editingId;
             e.date = date;
             e.type = activityType;
+            e.method = method;
+            e.methodCustom = methodCustom;
             e.durationMinutes = durationMinutes;
             e.mood = mood;
             e.bodyState = bodyState;
@@ -2378,6 +2660,12 @@ public class MainActivity extends Activity {
         if (e.durationMinutes > 0) tags.addView(miniTag(e.durationMinutes + " 分钟", Ui.DEEP, 0x0F7E3345));
         body.addView(tags);
 
+        String methodLine = methodLabel(e.method, e.methodCustom);
+        if (!methodLine.isEmpty()) {
+            body.addView(Ui.space(this, 6));
+            body.addView(Ui.tv(this, "方式 · " + methodLine, 11, Ui.DEEP, false));
+        }
+
         String extraLine = extrasSummary(e);
         if (!extraLine.isEmpty()) {
             body.addView(Ui.space(this, 6));
@@ -2479,6 +2767,8 @@ public class MainActivity extends Activity {
         box.addView(Ui.space(this, 14));
         addDetailRow(box, "心情", moodOnly(e));
         addDetailRow(box, "状态", e.bodyState.isEmpty() ? "未记录" : e.bodyState);
+        addDetailRow(box, "方式", methodLabel(e.method, e.methodCustom).isEmpty()
+                ? "未记录" : methodLabel(e.method, e.methodCustom));
         addDetailRow(box, "使用", e.extras == null || e.extras.isEmpty() ? "未使用" : extrasSummary(e));
         String hs = "";
         for (int i = 0; i < e.pleasure; i++) hs += "♥";
