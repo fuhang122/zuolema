@@ -60,9 +60,7 @@ import android.widget.Toast;
 import android.widget.VideoView;
 
 import java.io.File;
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -73,8 +71,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 public class MainActivity extends Activity {
 
@@ -2700,50 +2696,47 @@ public class MainActivity extends Activity {
 
                 HttpURLConnection conn = null;
                 try {
-                    conn = (HttpURLConnection) new URL(Github.LATEST_RELEASE_API).openConnection();
+                    conn = (HttpURLConnection) new URL(Github.URL + "/releases/latest").openConnection();
                     conn.setRequestMethod("GET");
+                    conn.setInstanceFollowRedirects(false);
                     conn.setConnectTimeout(15000);
                     conn.setReadTimeout(20000);
-                    conn.setRequestProperty("Accept", "application/vnd.github+json");
                     conn.setRequestProperty("User-Agent", "zuolema-android");
                     int code = conn.getResponseCode();
                     if (code == 404) {
                         toastOnUi("还没有发布版本");
                         return;
                     }
-                    if (code != 200) {
+                    if (code == 403) {
+                        toastOnUi("GitHub 访问受限，请稍后再试");
+                        return;
+                    }
+                    if (code != 301 && code != 302) {
                         toastOnUi("检查失败（" + code + "）");
                         return;
                     }
-                    BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(conn.getInputStream(), "UTF-8"));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) sb.append(line);
-                    reader.close();
-
-                    JSONObject root = new JSONObject(sb.toString());
-                    final String tag = root.optString("tag_name", "");
-                    final String page = root.optString("html_url", Github.URL);
-                    final String notes = root.optString("body", "");
-                    String apkUrl = "";
-                    JSONArray assets = root.optJSONArray("assets");
-                    if (assets != null) {
-                        for (int i = 0; i < assets.length(); i++) {
-                            JSONObject a = assets.getJSONObject(i);
-                            String name = a.optString("name", "");
-                            if (name.endsWith(".apk")) {
-                                apkUrl = a.optString("browser_download_url", "");
-                                break;
-                            }
-                        }
+                    String location = conn.getHeaderField("Location");
+                    if (location == null || location.length() == 0) {
+                        toastOnUi("没有找到最新版本");
+                        return;
                     }
-                    final String download = apkUrl;
+                    if (location.startsWith("/")) location = "https://github.com" + location;
+                    int tagAt = location.lastIndexOf("/tag/");
+                    if (tagAt < 0) {
+                        toastOnUi("没有找到最新版本");
+                        return;
+                    }
+                    final String tag = Uri.decode(location.substring(tagAt + 5));
+                    final String page = location;
+                    final String version = tag.startsWith("v") || tag.startsWith("V")
+                            ? tag.substring(1) : tag;
+                    final String download = Github.URL + "/releases/download/" + tag
+                            + "/zuolema-" + version + ".apk";
                     if (isNewer(tag, current)) {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                showUpdateDialog(tag, notes, page, download);
+                                showUpdateDialog(tag, "", page, download);
                             }
                         });
                     } else {

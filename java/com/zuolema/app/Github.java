@@ -5,8 +5,6 @@ public final class Github {
     public static final String OWNER = "fuhang122";
     public static final String REPO = "zuolema";
     public static final String URL = "https://github.com/" + OWNER + "/" + REPO;
-    public static final String LATEST_RELEASE_API =
-            "https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases/latest";
 
     private Github() {}
 }
