@@ -2995,7 +2995,7 @@ public class MainActivity extends Activity {
         about.addView(Ui.space(this, 12));
         about.addView(Ui.serif(this, "做了吗", 26, Ui.INK, true));
         about.addView(Ui.space(this, 4));
-        about.addView(Ui.tv(this, "版本 1.0.0 · 原生安卓 · 本机优先", 11, Ui.MUTED, false));
+        about.addView(Ui.tv(this, "版本 1.1.0 · 原生安卓 · 本机优先", 11, Ui.MUTED, false));
         about.addView(Ui.space(this, 10));
         about.addView(Ui.tv(this, "把身体的感觉留给自己。没有账号，没有评分，也没有别人。",
                 12, Ui.MUTED, false));

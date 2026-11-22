@@ -9,7 +9,7 @@ mkdir -p gen classes dexout
 /usr/bin/aapt2 compile --dir res -o res.zip
 /usr/bin/aapt2 link -o base.apk -I "$AJ" --manifest AndroidManifest.xml -R res.zip --auto-add-overlay \
   --java gen -A assets --min-sdk-version 26 --target-sdk-version 34 \
-  --version-code 1 --version-name 1.0.0
+  --version-code 2 --version-name 1.1.0
 
 javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$AJ" -d classes \
   $(find java gen -name '*.java')
