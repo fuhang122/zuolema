@@ -1,0 +1,18 @@
+# build artifacts
+/base.apk
+/withdex.apk
+/res.zip
+/dexout/
+/classes/
+/gen/
+*.idsig
+*.apk
+
+# signing material (never commit)
+ks.jks
+*.jks
+*.keystore
+
+# local
+.DS_Store
+*.log
