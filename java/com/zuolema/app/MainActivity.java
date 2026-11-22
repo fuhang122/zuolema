@@ -84,6 +84,8 @@ public class MainActivity extends Activity {
     private static final String[] MOOD_EMOJI = {"😊", "😌", "🙂", "😔", "😣"};
     private static final String[] MOOD_LABEL = {"愉悦", "放松", "平静", "低落", "烦躁"};
     private static final String[] STATES = {"精力充沛", "放松", "有点疲惫", "敏感", "心不在焉", "很满足"};
+    private static final String[] EXTRA_IDS = {"toys", "porn", "lube", "lingerie", "other"};
+    private static final String[] EXTRA_LABELS = {"道具", "成人视频", "润滑液", "情趣内衣", "其他"};
     private static final String[] PLEASURE_LABEL = {"", "几乎没有", "轻微", "愉悦", "强烈", "极致"};
     private static final int[] DURATION_PRESETS = {5, 15, 30, 45, 60};
 
@@ -105,6 +107,7 @@ public class MainActivity extends Activity {
     private String bodyState = "";
     private int pleasure = 0;
     private String note = "";
+    private final List<String> extras = new ArrayList<>();
     private final ArrayList<Store.Media> media = new ArrayList<>();
     private boolean dirty;
     private boolean bindingNote;
@@ -124,6 +127,7 @@ public class MainActivity extends Activity {
     private final List<LinearLayout> moodItems = new ArrayList<>();
     private final List<TextView> moodLabels = new ArrayList<>();
     private final List<TextView> stateChips = new ArrayList<>();
+    private final List<TextView> extraChips = new ArrayList<>();
     private final List<TextView> hearts = new ArrayList<>();
     private TextView pleasureHint;
     private LinearLayout mediaRow;
@@ -769,6 +773,7 @@ public class MainActivity extends Activity {
             bodyState = "";
             pleasure = 0;
             note = "";
+            extras.clear();
             media.clear();
         } else {
             activityType = e.type == null ? "" : e.type;
@@ -777,6 +782,8 @@ public class MainActivity extends Activity {
             bodyState = e.bodyState == null ? "" : e.bodyState;
             pleasure = e.pleasure;
             note = e.note == null ? "" : e.note;
+            extras.clear();
+            if (e.extras != null) extras.addAll(e.extras);
             media.clear();
             media.addAll(e.media);
         }
@@ -796,6 +803,7 @@ public class MainActivity extends Activity {
         page.addView(buildEditorHeader());
         page.addView(Ui.space(this, 14));
         page.addView(buildActivityCard());
+        page.addView(buildExtrasCard());
         page.addView(buildDurationCard());
         page.addView(buildMoodCard());
         page.addView(buildStateCard());
@@ -1515,13 +1523,78 @@ public class MainActivity extends Activity {
         return row;
     }
 
+    private View buildExtrasCard() {
+        LinearLayout card = Ui.card(this);
+        card.addView(sectionHeader("02", "这次用到的", "可多选"));
+        card.addView(Ui.space(this, 8));
+        card.addView(Ui.tv(this, "选填，不选就是没有用", 11, Ui.MUTED, false));
+        card.addView(Ui.space(this, 12));
+
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        LinearLayout row = Ui.row(this);
+        extraChips.clear();
+        for (int i = 0; i < EXTRA_IDS.length; i++) {
+            final String id = EXTRA_IDS[i];
+            TextView chip = Ui.pill(this, EXTRA_LABELS[i], extras.contains(id));
+            chip.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (extras.contains(id)) extras.remove(id);
+                    else extras.add(id);
+                    markDirty();
+                    refreshExtraChips();
+                }
+            });
+            LinearLayout.LayoutParams lp = Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34));
+            if (i < EXTRA_IDS.length - 1) lp.rightMargin = dp(7);
+            row.addView(chip, lp);
+            extraChips.add(chip);
+        }
+        scroll.addView(row);
+        card.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        refreshExtraChips();
+        return card;
+    }
+
+    private void refreshExtraChips() {
+        for (int i = 0; i < extraChips.size(); i++) {
+            boolean on = extras.contains(EXTRA_IDS[i]);
+            TextView chip = extraChips.get(i);
+            chip.setTextColor(on ? Color.WHITE : Ui.INK);
+            chip.setTypeface(android.graphics.Typeface.create(
+                    on ? "sans-serif-medium" : "sans-serif", android.graphics.Typeface.NORMAL));
+            chip.setBackground(on ? Ui.bg(Ui.ROSE, 30, this)
+                    : Ui.strokeBg(Ui.SOFT2, 30, Ui.LINE, 1, this));
+        }
+    }
+
+    private String extraLabel(String id) {
+        for (int i = 0; i < EXTRA_IDS.length; i++) {
+            if (EXTRA_IDS[i].equals(id)) return EXTRA_LABELS[i];
+        }
+        return id;
+    }
+
+    private String extrasSummary(Store.Entry e) {
+        if (e.extras == null || e.extras.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String id : e.extras) {
+            if (sb.length() > 0) sb.append(" · ");
+            sb.append(extraLabel(id));
+        }
+        return sb.toString();
+    }
+
     private View buildDurationCard() {
         durationTapCount = 0;
         durationTapAt = 0;
         LinearLayout card = Ui.card(this);
         LinearLayout top = Ui.row(this);
         LinearLayout left = Ui.col(this);
-        left.addView(sectionHeader("02", "持续了多久", null));
+        left.addView(sectionHeader("03", "持续了多久", null));
         left.addView(Ui.space(this, 8));
         left.addView(Ui.tv(this, "拖动或点一个常用时长", 11, Ui.MUTED, false));
         top.addView(left, new LinearLayout.LayoutParams(0,
@@ -1706,7 +1779,7 @@ public class MainActivity extends Activity {
 
     private View buildMoodCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(sectionHeader("03", "当时的心情", "单选"));
+        card.addView(sectionHeader("04", "当时的心情", "单选"));
         card.addView(Ui.space(this, 13));
         LinearLayout row = Ui.row(this);
         moodItems.clear();
@@ -1756,7 +1829,7 @@ public class MainActivity extends Activity {
 
     private View buildStateCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(sectionHeader("04", "身体状态", "单选"));
+        card.addView(sectionHeader("05", "身体状态", "单选"));
         card.addView(Ui.space(this, 13));
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
@@ -1800,7 +1873,7 @@ public class MainActivity extends Activity {
     private View buildPleasureCard() {
         LinearLayout card = Ui.card(this);
         LinearLayout top = Ui.row(this);
-        top.addView(sectionHeader("05", "快感度", null),
+        top.addView(sectionHeader("06", "快感度", null),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         pleasureHint = Ui.tv(this, "点选 0–5", 11, Ui.MUTED, false);
         top.addView(pleasureHint);
@@ -1845,7 +1918,7 @@ public class MainActivity extends Activity {
 
     private View buildNoteCard() {
         LinearLayout card = Ui.card(this);
-        card.addView(sectionHeader("06", "想记点什么", "选填"));
+        card.addView(sectionHeader("07", "想记点什么", "选填"));
         card.addView(Ui.space(this, 12));
         noteView = new EditText(this);
         noteView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
@@ -1886,7 +1959,7 @@ public class MainActivity extends Activity {
     private View buildMediaCard() {
         LinearLayout card = Ui.card(this);
         LinearLayout head = Ui.row(this);
-        head.addView(sectionHeader("07", "照片、视频和声音", null),
+        head.addView(sectionHeader("08", "照片、视频和声音", null),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         head.addView(Ui.tv(this, "最多 9 个", 10, Ui.MUTED, false));
         card.addView(head);
@@ -1996,7 +2069,7 @@ public class MainActivity extends Activity {
     private boolean isEmptyDraft() {
         return activityType.isEmpty() && durationMinutes == 15
                 && mood.isEmpty() && bodyState.isEmpty() && pleasure == 0
-                && note.trim().isEmpty() && media.isEmpty();
+                && note.trim().isEmpty() && extras.isEmpty() && media.isEmpty();
     }
 
     private void commitDraft(boolean force) {
@@ -2021,6 +2094,7 @@ public class MainActivity extends Activity {
             e.bodyState = bodyState;
             e.pleasure = pleasure;
             e.note = note;
+            e.extras = new ArrayList<>(extras);
             e.media = new ArrayList<>(media);
             store.put(e);
             editingId = e.id;
@@ -2304,6 +2378,12 @@ public class MainActivity extends Activity {
         if (e.durationMinutes > 0) tags.addView(miniTag(e.durationMinutes + " 分钟", Ui.DEEP, 0x0F7E3345));
         body.addView(tags);
 
+        String extraLine = extrasSummary(e);
+        if (!extraLine.isEmpty()) {
+            body.addView(Ui.space(this, 6));
+            body.addView(Ui.tv(this, "用到 · " + extraLine, 11, Ui.ROSE, false));
+        }
+
         String moodLine = moodSummary(e);
         if (!moodLine.isEmpty()) {
             body.addView(Ui.space(this, 8));
@@ -2399,6 +2479,7 @@ public class MainActivity extends Activity {
         box.addView(Ui.space(this, 14));
         addDetailRow(box, "心情", moodOnly(e));
         addDetailRow(box, "状态", e.bodyState.isEmpty() ? "未记录" : e.bodyState);
+        addDetailRow(box, "使用", e.extras == null || e.extras.isEmpty() ? "未使用" : extrasSummary(e));
         String hs = "";
         for (int i = 0; i < e.pleasure; i++) hs += "♥";
         addDetailRow(box, "快感", e.pleasure == 0 ? "未记录" : hs + "  " + PLEASURE_LABEL[e.pleasure]);

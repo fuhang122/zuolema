@@ -67,6 +67,8 @@ public class Store {
         public String bodyState = "";
         public int pleasure = 0;
         public String note = "";
+        /** 本次用到的道具/成人内容等标签，可多选。 */
+        public List<String> extras = new ArrayList<>();
         public List<Media> media = new ArrayList<>();
         public long createdAt;
         public long updatedAt;
@@ -78,7 +80,7 @@ public class Store {
         public boolean isEmpty() {
             return type.isEmpty() && durationMinutes == 15
                     && mood.isEmpty() && bodyState.isEmpty() && pleasure == 0
-                    && note.trim().isEmpty() && media.isEmpty();
+                    && note.trim().isEmpty() && extras.isEmpty() && media.isEmpty();
         }
 
         public Entry copy() {
@@ -91,6 +93,7 @@ public class Store {
             e.bodyState = bodyState;
             e.pleasure = pleasure;
             e.note = note;
+            e.extras = new ArrayList<>(extras);
             e.media = new ArrayList<>(media);
             e.createdAt = createdAt;
             e.updatedAt = updatedAt;
@@ -111,6 +114,9 @@ public class Store {
                 o.put("bodyState", bodyState);
                 o.put("pleasure", pleasure);
                 o.put("note", note);
+                JSONArray extraArr = new JSONArray();
+                for (String extra : extras) extraArr.put(extra);
+                o.put("extras", extraArr);
                 o.put("createdAt", createdAt);
                 o.put("updatedAt", updatedAt);
                 JSONArray arr = new JSONArray();
@@ -136,6 +142,13 @@ public class Store {
             e.bodyState = o.optString("bodyState", "");
             e.pleasure = o.optInt("pleasure", 0);
             e.note = o.optString("note", "");
+            JSONArray extraArr = o.optJSONArray("extras");
+            if (extraArr != null) {
+                for (int i = 0; i < extraArr.length(); i++) {
+                    String extra = extraArr.optString(i, "");
+                    if (!extra.isEmpty()) e.extras.add(extra);
+                }
+            }
             e.createdAt = o.optLong("createdAt", 0);
             e.updatedAt = o.optLong("updatedAt", 0);
             if (e.createdAt == 0) e.createdAt = e.updatedAt;
