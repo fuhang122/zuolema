@@ -92,9 +92,9 @@ public class MainActivity extends Activity {
     private static final String[] SEX_METHOD_IDS = {"none", "condom", "outside", "custom"};
     private static final String[] SEX_METHOD_LABELS = {"无套", "有套", "体外", "自定义"};
     private static final String[] SEX_METHOD_HINTS = {"不戴套", "全程佩戴", "体外结束", "写自己的方式"};
-    private static final String[] MAST_METHOD_IDS = {"hand", "toy"};
-    private static final String[] MAST_METHOD_LABELS = {"手", "道具"};
-    private static final String[] MAST_METHOD_HINTS = {"用手", "使用道具"};
+    private static final String[] MAST_METHOD_IDS = {"hand", "toy", "custom"};
+    private static final String[] MAST_METHOD_LABELS = {"手", "道具", "自定义"};
+    private static final String[] MAST_METHOD_HINTS = {"用手", "使用道具", "写自己的方式"};
     private static final String[] PLEASURE_LABEL = {"", "几乎没有", "轻微", "愉悦", "强烈", "极致"};
     private static final int[] DURATION_PRESETS = {5, 15, 30, 45, 60};
 
@@ -1688,7 +1688,7 @@ public class MainActivity extends Activity {
         final EditText input = new EditText(this);
         input.setSingleLine(true);
         input.setText(methodCustom == null ? "" : methodCustom);
-        input.setHint("例如：先戴套，后来摘了");
+        input.setHint("sex".equals(activityType) ? "例如：先戴套，后来摘了" : "例如：用了某个玩具");
         input.setTextColor(Ui.INK);
         input.setHintTextColor(Ui.MUTED);
         input.setTextSize(14);
@@ -2995,7 +2995,7 @@ public class MainActivity extends Activity {
         about.addView(Ui.space(this, 12));
         about.addView(Ui.serif(this, "做了吗", 26, Ui.INK, true));
         about.addView(Ui.space(this, 4));
-        about.addView(Ui.tv(this, "版本 1.1.0 · 原生安卓 · 本机优先", 11, Ui.MUTED, false));
+        about.addView(Ui.tv(this, "版本 1.1.1 · 原生安卓 · 本机优先", 11, Ui.MUTED, false));
         about.addView(Ui.space(this, 10));
         about.addView(Ui.tv(this, "把身体的感觉留给自己。没有账号，没有评分，也没有别人。",
                 12, Ui.MUTED, false));

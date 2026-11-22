@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'release/*.apk'
+      - 'RELEASE_NOTES.md'
       - '.github/workflows/release.yml'
 permissions:
   contents: write
@@ -19,5 +20,10 @@ jobs:
           VERSION=$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' AndroidManifest.xml | head -n 1)
           TAG="v$VERSION"
           test -f "release/zuolema-$VERSION.apk"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "做了吗 $VERSION" --notes "做了吗 $VERSION"
+          NOTES="RELEASE_NOTES.md"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$NOTES"
+          else
+            gh release create "$TAG" --title "做了吗 $VERSION" --notes-file "$NOTES"
+          fi
           gh release upload "$TAG" "release/zuolema-$VERSION.apk" --clobber
